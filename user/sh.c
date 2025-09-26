@@ -4,7 +4,7 @@
 #include "user/user.h"
 #include "kernel/fcntl.h"
 #include "kernel/stat.h"
-#include "kernel/fs.h" // Add isatty declaration
+#include "kernel/fs.h" // isatty decl
 
 // Parsed command representation
 #define EXEC  1
@@ -148,12 +148,11 @@ runcmd(struct cmd *cmd)
 int getcmd(char *buf, int nbuf) {
   if (g_interactive) {
     write(2, prompt, strlen(prompt));
-  }  
-  
+  }
   memset(buf, 0, nbuf);
   int n = readline(buf, nbuf);
-  if (n < 0) return -1;                  // EOF: exit shell; init respawns it
-  if (buf[0] == 0) return 0;             // blank line reprompt
+  if (n < 0) return -1;                  // EOF,shell exit
+  if (buf[0] == 0) return 0;             // blank
   return 0;
 }
 
@@ -164,8 +163,8 @@ static int readline(char *buf, int max) {
     char c;
     int r = read(0, &c, 1);
     if (r < 1) {
-      if (len == 0) return -1;  
-      buf[len] = 0;             
+      if (len == 0) return -1;
+      buf[len] = 0;
       return len;
     }
 
@@ -180,7 +179,7 @@ static int readline(char *buf, int max) {
     }
 
     if (c == '\t') {
-      // Do completion and print only the suffix
+      //output suffix after complete
       complete(buf, &len);
       continue;
     }
@@ -189,12 +188,12 @@ static int readline(char *buf, int max) {
       if (len + 1 < max) buf[len++] = c;
       continue;
     }
-    // ignore others
+    // ignore rest
   }
 }
 
 
-// Autocomplete helper functions
+// autocomplete helpers
 static int
 is_sep(int c) {
   return c==' ' || c=='\t' || c=='\n' || c=='|' || c==';' || c=='&' || c=='<' || c=='>';
@@ -224,7 +223,7 @@ is_dir(const char *name) {
   return st.type == T_DIR;
 }
 
-// Longest common prefix among matches
+// Longest common prefix in match
 static int
 lcp_len(char matches[][DIRSIZ+1], int n) {
   if (n <= 0) return 0;
@@ -237,22 +236,22 @@ lcp_len(char matches[][DIRSIZ+1], int n) {
   }
 }
 
-// Tab completion
+// TAB AUTOCOMPLETE
 static void
 complete(char *buf, int *len) {
-  // 1) find token start (last separator + 1)
+  // find token start
   int t0 = *len;
   while (t0 > 0 && !is_sep((unsigned char)buf[t0-1])) t0--;
   int plen = *len - t0;
-  if (plen <= 0) { write(1, "\a", 1); return; }     // nothing to complete
+  if (plen <= 0) { write(1, "\a", 1); return; }
 
-  // 2) prefix string (cap at DIRSIZ)
+  // prefix (cap at DIRSIZ)
   if (plen > DIRSIZ) plen = DIRSIZ;
   char prefix[DIRSIZ+1];
   for (int i=0; i<plen; i++) prefix[i] = buf[t0+i];
   prefix[plen] = 0;
 
-  // 3) scan "." and collect matches
+  // scan "." and have matches
   int fd = open(".", 0);
   if (fd < 0) return;
 
@@ -294,7 +293,7 @@ complete(char *buf, int *len) {
     return;
   }
 
-  // multiple matches: extend by LCP; if no extension possible, list + redraw
+  // multiple matches: extend by lcp; if no extension, list + redraw
   int lcp = lcp_len(matches, m);
   if (lcp > plen) {
     char tmp[DIRSIZ+1];
@@ -312,8 +311,8 @@ complete(char *buf, int *len) {
     if (isdir[i]) write(1, "/", 1);
     write(1, "\n", 1);
   }
-  if (g_interactive) write(2, prompt, strlen(prompt));   // same prompt guard you already have
-  write(1, buf, *len);                    // restore current line
+  if (g_interactive) write(2, prompt, strlen(prompt));
+  write(1, buf, *len);                    // restore line
 }
 
 
@@ -324,7 +323,6 @@ main(void)
   static char buf[100];
   int fd;
 
-  // Ensure that three file descriptors are open.
   while((fd = open("console", O_RDWR)) >= 0){
     if(fd >= 3){
       close(fd);
@@ -346,16 +344,16 @@ main(void)
     g_interactive = 0;
   }
 
-  // Read and run input commands.
+  // read and run input commands.
   while(getcmd(buf, sizeof(buf)) >= 0){
     char *cmd = buf;
 
     while (*cmd == ' ' || *cmd == '\t')
       cmd++;
 
-    if (*cmd == 0) continue;  // skip empty lines
+    if (*cmd == 0) continue;  // skip empty
 
-    // built-in: history
+    //HISTORY
     if (strcmp(cmd, "history") == 0) {
       if (histfd >= 0) {
         close(histfd);
@@ -378,12 +376,11 @@ main(void)
       write(histfd, "\n", 1);
     }
 
-    // built-in: cd
     if(cmd[0] == 'c' && cmd[1] == 'd' && cmd[2] == ' '){
       if(chdir(cmd+3) < 0)
         fprintf(2, "cannot cd %s\n", cmd+3);
     } else {
-      // built-in: wait
+      // WAIT
       char *p = cmd;
       while (*p == ' ' || *p == '\t') p++;
       if (p[0]=='w' && p[1]=='a' && p[2]=='i' && p[3]=='t') {
