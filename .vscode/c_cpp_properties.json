@@ -1,0 +1,16 @@
+{
+  "configurations": [
+    {
+      "name": "xv6",
+      "includePath": [
+        "${workspaceFolder}",
+        "${workspaceFolder}/kernel",
+        "${workspaceFolder}/user"
+      ],
+      "compilerPath": "/opt/homebrew/bin/riscv64-elf-gcc",
+      "cStandard": "c11",
+      "intelliSenseMode": "gcc-x64"
+    }
+  ],
+  "version": 4
+}
