@@ -105,3 +105,13 @@ sys_uptime(void)
   release(&tickslock);
   return xticks;
 }
+uint64 sys_interpose(void){
+  uint64 m = 0;
+  uint64 upath = 0;   
+
+  argaddr(0, &m);       
+  argaddr(1, &upath);   
+
+  myproc()->deny_mask = m;
+  return 0;
+}
