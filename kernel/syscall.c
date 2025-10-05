@@ -133,23 +133,34 @@ static uint64 (*syscalls[])(void) = {
 void
 syscall(void)
 {
-  int num;
-  struct proc *p = myproc();
+  struct proc *cur = myproc();
+  int callno = cur->trapframe->a7;
 
-  num = p->trapframe->a7;
   // if(num > 0 && num < NELEM(syscalls) && syscalls[num]) {
   //  Use num to lookup the system call function for number and call
   //  store return in p->trapframe->a0
 
-  if (num > 0 && num < NELEM(syscalls) && syscalls[num]) {
-    if ((p->deny_mask >> num) & 1) {
-      // denied return -1
-      p->trapframe->a0 = -1;
+  if (callno <= 0 || callno >= NELEM(syscalls) || !syscalls[callno]) {
+    printf("%d %s: unknown sys call %d\n", cur->pid, cur->name, callno);
+    cur->trapframe->a0 = -1;
+    return;
+  }
+
+  int blocked = (cur->deny_mask & (1ULL << callno)) ? 1 : 0;
+  if (blocked && (callno == SYS_open || callno == SYS_exec)) {
+    if (cur->allow_path[0] != 0) {
+      char path[MAXPATH];
+      if (argstr(0, path, sizeof(path)) >= 0) {
+        if (strncmp(path, cur->allow_path, MAXPATH) == 0) {
+          blocked = 0;
+        }
+      }
+    }
+  }
+  if (blocked) {
+      cur->trapframe->a0 = -1;
       return;
     }
-    p->trapframe->a0 = syscalls[num]();
-  } else {
-    printf("%d %s: unknown sys call %d\n", p->pid, p->name, num);
-    p->trapframe->a0 = -1;
+
+    cur->trapframe->a0 = syscalls[callno]();
   }
-}
