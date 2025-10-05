@@ -124,6 +124,7 @@ allocproc(void)
 found:
   p->pid = allocpid();
   p->deny_mask = 0;
+  p->allow_path[0] = 0;
   p->state = USED;
 
   // Allocate a trapframe page.
@@ -170,6 +171,8 @@ freeproc(struct proc *p)
   p->killed = 0;
   p->xstate = 0;
   p->state = UNUSED;
+  p->deny_mask = 0; 
+  p->allow_path[0] = 0;
 }
 
 // Create a user page table for a given process, with no user memory,
@@ -281,6 +284,7 @@ kfork(void)
   np->trapframe->a0 = 0;
 
   np->deny_mask = p->deny_mask;
+  safestrcpy(np->allow_path, p->allow_path, sizeof(np->allow_path));
   // increment reference counts on open file descriptors.
   for(i = 0; i < NOFILE; i++)
     if(p->ofile[i])
