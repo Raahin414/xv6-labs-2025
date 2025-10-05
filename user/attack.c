@@ -5,7 +5,7 @@
 
 #define PAGES_TO_ALLOC   128   
 #define PAGE             4096
-#define MIN_SECRET_LEN   8
+#define MIN_SECRET_LEN   4
 #define MAX_TRIES        6
 #define MAX_SECRET_LEN   64   
 
