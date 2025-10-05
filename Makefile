@@ -197,6 +197,8 @@ UPROGS=\
 	$U/_dorphan\
 	$U/_sandbox\
 	$U/_attack\
+	$U/_attack_debug\
+	$U/_attack_done\
 
 
 
