@@ -18,7 +18,6 @@ static int is_alnum(char c){
   return 0;
 }
 
-// Steiners attack?
 int main(void) {
   int dbg = 0;
   for (int run = 0; run < MAX_TRIES; run++) {
