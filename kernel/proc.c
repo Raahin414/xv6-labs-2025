@@ -132,6 +132,15 @@ found:
     return 0;
   }
 
+  p->usys = (struct usyscall*)kalloc();
+    if(p->usys == 0) {
+      freeproc(p);
+      release(&p->lock);
+      return 0;
+    }
+  memset(p->usys, 0, PGSIZE);
+
+
   // An empty user page table.
   p->pagetable = proc_pagetable(p);
   if(p->pagetable == 0){
@@ -139,6 +148,8 @@ found:
     release(&p->lock);
     return 0;
   }
+
+  p->usys->pid = p->pid;
 
   // Set up new context to start executing at forkret,
   // which returns to user space.
@@ -160,6 +171,10 @@ freeproc(struct proc *p)
   p->trapframe = 0;
   if(p->pagetable)
     proc_freepagetable(p->pagetable, p->sz);
+  if(p->usys) {
+     kfree((void*)p->usys);
+     p->usys = 0;
+  }
   p->pagetable = 0;
   p->sz = 0;
   p->pid = 0;
@@ -201,6 +216,10 @@ proc_pagetable(struct proc *p)
     uvmfree(pagetable, 0);
     return 0;
   }
+  if (mappages(pagetable, USYSCALL, PGSIZE, (uint64)p->usys, PTE_R | PTE_U) < 0) {
+    uvmfree(pagetable, 0); // If mapping fails, free the allocated pagetable to avoid memory leaks
+    return 0;
+  }
 
   return pagetable;
 }
@@ -210,6 +229,7 @@ proc_pagetable(struct proc *p)
 void
 proc_freepagetable(pagetable_t pagetable, uint64 sz)
 {
+  uvmunmap(pagetable, USYSCALL, 1, 0);
   uvmunmap(pagetable, TRAMPOLINE, 1, 0);
   uvmunmap(pagetable, TRAPFRAME, 1, 0);
   uvmfree(pagetable, sz);

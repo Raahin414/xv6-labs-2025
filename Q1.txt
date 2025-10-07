@@ -1,0 +1,12 @@
+The page table dump from `pgtbltest` illustrates how xv6 maps a process’s virtual addresses (VAs) to corresponding physical addresses (PAs), along with the permission flags for each page.
+
+The lower region of the address space (around 0x0–0x4000) corresponds to the program’s code and data. Each of these entries points to a valid physical page (for example, va 0x0 → pa 0x87F22000) and includes permissions such as readable, writable, executable, and user-accessible. These sections together form the text, data, and stack segments of the user process.
+
+The middle portion of the address space (0x5000–0x9000) has no active mappings, showing that no physical memory is assigned there.
+
+Near the upper end of the user address space, two special mappings appear that xv6 uses for process–kernel interaction:
+
+* **Trapframe page (va 0x3FFFFFE000)** — stores the process’s CPU register state when traps or system calls occur.
+* **Trampoline page (va 0x3FFFFFF000)** — contains common transition code used when switching between user and kernel mode.
+
+This structure demonstrates xv6’s memory layout: user code and data at low addresses, free/unmapped space in the middle, and trap/trampoline pages at the very top that link the user process to the kernel.
