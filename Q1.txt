@@ -10,3 +10,50 @@ Near the upper end of the user address space, two special mappings appear that x
 * **Trampoline page (va 0x3FFFFFF000)** — contains common transition code used when switching between user and kernel mode.
 
 This structure demonstrates xv6’s memory layout: user code and data at low addresses, free/unmapped space in the middle, and trap/trampoline pages at the very top that link the user process to the kernel.
+
+Question 2
+
+The output from `print_pgtbl` displays how each virtual address links to its corresponding physical address through the process’s page table. Every line represents a single page entry and lists the access rights assigned to that page.
+
+0x0000000000000000 → pte 0x...5B  
+  User program code segment (read + execute). Flags: V, R, X, U, A.  
+  Matches the user text region visible in `show_pagetable`.
+
+0x0000000000001000 → pte 0x...5B  
+  Next user page holding more code or constants.  
+  Permissions identical to the previous entry (V, R, X, U, A).
+
+0x0000000000002000 → pte 0x...D7  
+  Writable user page for stack or global data.  
+  Permissions: V, R, W, U, A, D. Seen as a data/stack entry in `show_pagetable`.
+
+0x0000000000003000 → pte 0x...07  
+  Kernel-only mapping (read + write, not accessible by user code).  
+  Restricted to supervisor mode.
+
+0x0000000000004000 → pte 0x...D7  
+  Another writable user page for stack/data space.  
+  Same permission bits as above: V, R, W, U, A, D.
+
+0x0000003fffffd000 → pte 0x...13  
+  USYSCALL region for quick user-level system calls (e.g., getpid).  
+  Read-only from user space: V, R, U.
+
+0x0000003fffffe000 → pte 0x...C7  
+  Trapframe memory, used by the kernel to save user registers on traps.  
+  Kernel read/write only (V, R, W).
+
+0x0000003ffffff000 → pte 0x...4B  
+  Trampoline page containing kernel transition code.  
+  Read + execute, supervisor-only (V, R, X).
+
+---
+
+Summary:
+
+- **Lower address range (0x0–0x4000)**: holds user memory for code and stack/data.  
+- **Higher range (0x3ffffff000 and above)**: reserved for kernel-controlled pages like `USYSCALL`, `Trapframe`, and `Trampoline`.  
+- The flags (V, R, W, X, U, A, D) specify validity, allowed actions, and user/kernel accessibility.  
+
+This mapping demonstrates how xv6 separates user pages from kernel memory while still allowing safe interaction between them.
+

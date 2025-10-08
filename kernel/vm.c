@@ -8,6 +8,10 @@
 #include "proc.h"
 #include "fs.h"
 
+#define LEVELS   3   // Number of levels in the page table
+#define IDXBITS  9   // Bits used to index each level (512 entries per level)
+#define PGOFF    12  // Bits used for the page offset (4KB page size)
+
 /*
  * the kernel's page table.
  */
@@ -142,9 +146,56 @@ walkaddr(pagetable_t pagetable, uint64 va)
 
 
 #if defined(LAB_PGTBL) || defined(SOL_MMAP) || defined(SOL_COW)
+
+static void show_indent(int depth);
+static void walk_vmpage(pagetable_t pt, int level, uint64 vaprefix);
+
+
 void
 vmprint(pagetable_t pagetable) {
   // your code here
+  printf("page table %p\n", pagetable);
+  walk_vmpage(pagetable, 2, 0);
+}
+
+
+
+static void walk_vmpage(pagetable_t pt, int level, uint64 vaprefix) {
+  for (int idx = 0; idx < 512; idx++) {
+    pte_t entry = pt[idx];
+
+    // Skip if the current entry is invalid (not marked as valid)
+    if ((entry & PTE_V) == 0)
+      continue;
+
+    // Extract the physical address from the PTE
+    uint64 phys_addr = PTE2PA(entry);
+
+    // Calculate which virtual address bits this index contributes
+    int shift = level * IDXBITS + PGOFF;
+    uint64 virt_node = vaprefix | ((uint64)idx << shift);
+
+    // Determine the indentation depth for this level
+    int depth = (LEVELS - 1) - level + 1;
+
+    show_indent(depth);
+
+    // Display the mapping details: virtual node, entry, and physical address
+    printf("%p: pte %p pa %p\n", (void*)virt_node, (void*)entry, (void*)phys_addr);
+
+    // If this is a lower-level page table entry, continue walking down
+    if ((entry & (PTE_R | PTE_W | PTE_X)) == 0) {
+      walk_vmpage((pagetable_t)phys_addr, level - 1, virt_node);
+    }
+
+
+  }
+}
+
+// Print indentation to visualize tree structure of page table
+static void show_indent(int depth) {
+   for (int d = 0; d < depth; d++)
+   printf(" ..");
 }
 #endif
 
