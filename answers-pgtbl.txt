@@ -1,0 +1,42 @@
+Question 1: Understanding the Page Table Output
+The page table output from the test shows the memory map for a user process, translating Virtual Addresses (VAs) to Physical Addresses (PAs).
+
+Bottom of Memory (0x0 – 0x4000): This is the process's own code and data. The permissions (0x5B) mean these pages are valid, readable, writable, and executable by the user. This is where the program's instructions and data live.
+
+Middle (0x5000 – 0x9000): This is unmapped space (PTE = 0). Accessing these addresses would cause a fault, as no physical memory is assigned to them yet.
+
+Top of Memory: These are special kernel pages that every process gets.
+
+VA 0x3FFFFFE000 (Trapframe): The kernel uses this page to save and restore the user's register state during a system call or trap. Its permissions allow the kernel to read and write to it.
+
+VA 0x3FFFFFF000 (Trampoline): This page holds the shared code that safely jumps between user mode and kernel mode. It's marked readable and executable so the CPU can run the code, but not writable.
+
+In short: A process's memory is laid out with its own stuff at the bottom, free space in the middle, and essential kernel helpers at the very top.
+
+Question 2: Other System Calls for USYSCALL
+The USYSCALL page is a clever trick to avoid the overhead of a full system call for simple data. This same idea could speed up other "getter" functions that return mostly static information, such as:
+
+getuid(), getgid(), getppid() (to get user/group/parent process IDs)
+
+times() (to get process timing information)
+
+The common theme is that these calls primarily read data from the kernel that doesn't change often and is safe to expose directly to the user.
+
+Question 3: Permission Bit Breakdown
+Here’s a walkthrough of what the different permission bits mean for each page:
+
+0x0 (0x...5B): User code page. Permissions are Valid, Readable, eXecutable, User-accessible. This is the program's executable code.
+
+0x1000 (0x...5B): Another user code/data page with the same permissions as above.
+
+0x2000 (0x...D7): User data/stack page. Permissions are Valid, Readable, Writable, User, AccesseD (the 'D' bit means it has been written to). This is for the stack or heap.
+
+0x3000 (0x...07): A kernel-only page. It's valid, readable, and writable, but not accessible from user mode. A user process trying to access this would fault.
+
+0x4000 (0x...D7): Another user data page, same as the one at 0x2000.
+
+0x3FFFFFD000 (0x...13): The USYSCALL page. It's Valid and Readable to the user, but not writable or executable. This allows fast reads for getpid().
+
+0x3FFFFFE000 (0x...C7): The TRAPFRAME page. The kernel has full read/write access to it, but user access is restricted.
+
+0x3FFFFFF000 (0x...4B): The TRAMPOLINE page. It's Valid, Readable, and eXecutable. This allows both user and kernel to run the code on this page to switch modes.
