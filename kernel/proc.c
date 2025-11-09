@@ -125,6 +125,12 @@ found:
   p->pid = allocpid();
   p->state = USED;
 
+  p->alarm_enabled = 0;
+  p->alarm_ticks = 0;
+  p->alarm_trapframe = 0;
+  p->alarm_interval = 0;
+  p->alarm_handler = 0;
+
   // Allocate a trapframe page.
   if((p->trapframe = (struct trapframe *)kalloc()) == 0){
     freeproc(p);
@@ -169,6 +175,17 @@ freeproc(struct proc *p)
   p->killed = 0;
   p->xstate = 0;
   p->state = UNUSED;
+
+  if(p->alarm_trapframe){
+    kfree(p->alarm_trapframe);
+    p->alarm_trapframe = 0;
+  }
+    
+  // ADDED BY SAFEGUARD
+  p->alarm_interval = 0;
+  p->alarm_ticks = 0;
+  p->alarm_enabled = 0;
+  p->alarm_handler = 0;
 }
 
 // Create a user page table for a given process, with no user memory,

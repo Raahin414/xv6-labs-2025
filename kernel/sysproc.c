@@ -81,6 +81,37 @@ sys_pause(void)
     sleep(&ticks, &tickslock);
   }
   release(&tickslock);
+  backtrace();
+  return 0;
+}
+
+uint64 sys_sleep(void) {
+  int duration;
+  uint start_ticks;
+
+  argint(0, &duration);
+  if (duration < 0)
+    duration = 0;
+
+  acquire(&tickslock);
+  start_ticks = ticks;
+
+  for (;;) {
+    if (ticks - start_ticks >= duration)
+      break;
+
+    struct proc *p = myproc();
+    if (killed(p)) {
+      release(&tickslock);
+      return -1;
+    }
+    sleep(&ticks, &tickslock);  // Releases lock, sleeps, reacquires lock on wakeup
+  }
+
+  printf("Calling backtrace from sys_sleep\n");
+  backtrace();  // Debugging feature to trace function call stack
+
+  release(&tickslock);
   return 0;
 }
 
@@ -105,3 +136,57 @@ sys_uptime(void)
   release(&tickslock);
   return xticks;
 }
+
+uint64 sys_sigreturn(void) {
+  struct proc *proc_ptr = myproc();
+
+  if (proc_ptr->alarm_trapframe == 0)
+    return -1;
+    
+  // Restore original trapframe state after alarm handler execution
+  *(proc_ptr->trapframe) = *(proc_ptr->alarm_trapframe);
+
+  kfree(proc_ptr->alarm_trapframe);
+  proc_ptr->alarm_enabled = 1;
+  proc_ptr->alarm_ticks   = proc_ptr->alarm_interval;
+  proc_ptr->alarm_trapframe = 0;
+
+  // Return value from original context before alarm interrupted
+  return proc_ptr->trapframe->a0;
+}
+
+uint64 sys_sigalarm(void) {
+  uint64 fn_ptr;
+  int time_gap;
+
+  argint(0, &time_gap);
+  argaddr(1, &fn_ptr);
+
+  struct proc *p = myproc();
+
+  if (time_gap == 0) {
+    // Disable alarm by clearing all alarm-related fields
+    if (p->alarm_trapframe) {
+      kfree(p->alarm_trapframe);
+      p->alarm_trapframe = 0;
+    }
+    p->alarm_enabled  = 0;
+    p->alarm_interval = 0;
+    p->alarm_ticks    = 0;
+    p->alarm_handler  = 0;
+    return 0;
+  }
+
+  if (time_gap < 0)
+    return -1;
+
+  // Configure periodic alarm with interval and handler function
+  p->alarm_interval = time_gap;
+  p->alarm_handler  = (void(*)())fn_ptr;
+  p->alarm_ticks    = time_gap;
+  p->alarm_enabled  = 1;
+
+  return 0;
+}
+
+
